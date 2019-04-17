@@ -77,7 +77,7 @@ void read_conf (char *file1, configuration *conf_info) {
 }
 
 void compare_output (configuration *conf_info, student *student_info,  char output_path[SIZE]) {
-    pid_t  pid = fork();
+    pid_t pid = fork();
     if (pid == -1) {
         PRINT_ERROR_AND_EXIT;
     } else if (pid == 0) {
@@ -91,29 +91,34 @@ void compare_output (configuration *conf_info, student *student_info,  char outp
             PRINT_ERROR_AND_EXIT;
         }
 
-
         char *arguments[4] = {cwd, conf_info->output_file, output_path, NULL};
         execvp(arguments[0], arguments);
         printf("lol\n");
         PRINT_ERROR_AND_EXIT;
     } else {
-        int status;
+        int status, return_val;
         // wait for the child process to end
         int waitRet = waitpid(pid, &status, 0);
         if (waitRet == -1) {
             PRINT_ERROR_AND_EXIT;
         }
 
+        if (WEXITSTATUS(status) == 0) {
+            return;
+        } else {
+            return_val = WEXITSTATUS(status);
+        }
+
         // the output is different from the correct output
-        if (status == 2) {
+        if (return_val == 2) {
             student_info->grade = 60;
             strncpy(student_info->reason, "BAD_OUTPUT‬‬", strlen("BAD_OUTPUT‬‬"));
             // the output is similar to the correct output
-        } else if (status == 3) {
+        } else if (return_val == 3) {
             student_info->grade = 80;
             strncpy(student_info->reason, "SIMILAR_OUTPUT", strlen("SIMILAR_OUTPUT‬‬"));
             // the output is the correct output
-        } else if (status == 1) {
+        } else if (return_val == 1) {
             student_info->grade = 100;
             strncpy(student_info->reason, "GREAT_JOB‬‬", strlen("GREAT_JOB‬‬"));
         }
@@ -124,7 +129,7 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
     char output_file[SIZE] = {0};
     // create a path for an output file
     strncpy(output_file, directory, strlen(directory));
-    strcat(output_file, "/output");
+    strcat(output_file, "/output.txt");
 
     pid_t pid = fork();
     if (pid == -1) {
@@ -154,7 +159,7 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
         }
 
         // IO redirection
-        /*if(dup2(input, STDIN_FILENO) == -1) {
+        if(dup2(input, STDIN_FILENO) == -1) {
             close(input);
             close(output);
             exit(EXIT_FAILURE);
@@ -162,12 +167,7 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
         if(dup2(output, STDIN_FILENO) == -1) {
             close(output);
             exit(EXIT_FAILURE);
-        }*/
-
-        // replace standard input with input file
-        dup2(input, 0);
-        // replace standard output with output file
-        dup2(output, 1);
+        }
 
         // close files
         if (close(input) == -1) {
