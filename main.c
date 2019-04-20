@@ -91,7 +91,7 @@ void compare_output (configuration *conf_info, student *student_info,  char outp
             PRINT_ERROR_AND_EXIT;
         }
 
-        char *arguments[4] = {cwd, conf_info->output_file, output_path, NULL};
+        char *arguments[] = {cwd, conf_info->output_file, output_path, NULL};
         execvp(arguments[0], arguments);
         printf("lol\n");
         PRINT_ERROR_AND_EXIT;
@@ -153,7 +153,7 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
         }
 
         // open output file
-        int output = open(output_file, O_RDWR | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+        int output = open(output_file, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
         if (output == -1) {
             PRINT_ERROR_AND_EXIT;
         }
@@ -164,7 +164,7 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
             close(output);
             exit(EXIT_FAILURE);
         }
-        if(dup2(output, STDIN_FILENO) == -1) {
+        if(dup2(output, STDOUT_FILENO) == -1) {
             close(output);
             exit(EXIT_FAILURE);
         }
@@ -177,7 +177,7 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
             PRINT_ERROR_AND_EXIT;
         }
 
-        char *arguments[3] = {path, conf_info->input_file, NULL};
+        char *arguments[2] = {path, NULL};
         execvp(arguments[0], arguments);
         PRINT_ERROR_AND_EXIT;
     } else {
@@ -277,12 +277,37 @@ int in_directory (configuration *conf_info, student *student_info, char director
 
         } else if (!strcmp(dir_struct->d_name + (strlen(dir_struct->d_name))-2, ".c")) {
             c_file_exists = 1;
-            printf("%s is a c file\n",dir_struct->d_name);
             compile_and_run_file(dir_struct, directory, conf_info, student_info);
         }
         dir_struct = readdir(dir);
     }
     return c_file_exists;
+}
+
+void save_student(student *student_info) {
+    int output_file = open("results.csv", O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+    if (output_file == -1) {
+        PRINT_ERROR_AND_EXIT;
+    }
+
+    char st_line[SIZE] = {0};
+    char grade[sizeof(int)];
+
+    // write to the results.csv file all the student information
+    strcat(st_line, student_info->name);
+    strcat(st_line, ",");
+    sprintf(grade, "%d", student_info->grade);
+    strcat(st_line, grade);
+    strcat(st_line, ",");
+    strcat(st_line, student_info->reason);
+    strcat(st_line, "\n");
+
+    ssize_t in = write(output_file, st_line, strlen(st_line));
+    if (in == -1) {
+        PRINT_ERROR_AND_EXIT;
+    }
+
+    printf("%s\n", st_line);
 }
 
 int main (int argc, char *argv[]) {
@@ -323,7 +348,7 @@ int main (int argc, char *argv[]) {
             strncpy(path_buff, conf_info.directory, strlen(conf_info.directory));
             strcat(path_buff, "/");
             strcat(path_buff, dir_struct->d_name);
-            printf("directory: %s\n", path_buff);
+
             // goes over the student directory
             int exist_c_file = in_directory(&conf_info, &student_info, path_buff);
             // if the student doesn't has c file
@@ -331,11 +356,10 @@ int main (int argc, char *argv[]) {
                 student_info.grade = 0;
                 strncpy(student_info.reason, "‫‪NO_C_FILE‬‬", strlen("‫‪NO_C_FILE‬‬"));
             }
-            printf("student grade: %d, student reason: %s\n", student_info.grade, student_info.reason);
-        } else {
-            dir_struct = readdir(dir);
-            continue;
+
+            save_student(&student_info);
         }
+
         dir_struct = readdir(dir);
     }
     return 0;
