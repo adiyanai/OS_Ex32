@@ -68,7 +68,7 @@ void read_conf (char *file1, configuration *conf_info) {
                     conf_info->output_file[j] = input_buffer[i];
                     break;
                 default:
-                    PRINT_ERROR_AND_EXIT;
+                PRINT_ERROR_AND_EXIT;
             }
             j++;
         }
@@ -84,16 +84,15 @@ void compare_output (configuration *conf_info, student *student_info,  char outp
         char cwd[SIZE] = {0};
 
         // get the current path
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        if (getcwd(cwd, sizeof(cwd)) != -1) {
             // create the path of the comp.out
-            strcat(cwd, "/comp.out‬‬");
+            strcat(cwd, "/comp.out");
         } else {
             PRINT_ERROR_AND_EXIT;
         }
 
-        char *arguments[] = {cwd, conf_info->output_file, output_path, NULL};
-        execvp(arguments[0], arguments);
-        printf("lol\n");
+        char *arguments[4] = {"comp", conf_info->output_file, output_path, NULL};
+        execvp(cwd, arguments);
         PRINT_ERROR_AND_EXIT;
     } else {
         int status, return_val;
@@ -138,7 +137,7 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
         // create the path of the comp.out
         char path[SIZE] = {0};
         strncpy(path, directory, strlen(directory));
-        strcat(path, "/comp.out");
+        strcat(path, "/comp");
 
         // open input file
         // tests whether the file exist and whether the files can be accessed for reading
@@ -177,7 +176,7 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
             PRINT_ERROR_AND_EXIT;
         }
 
-        char *arguments[2] = {path, NULL};
+        char *arguments[3] = {path, conf_info->input_file, NULL};
         execvp(arguments[0], arguments);
         PRINT_ERROR_AND_EXIT;
     } else {
@@ -215,7 +214,7 @@ void compile_and_run_file (struct dirent* dir_struct, char directory[SIZE], conf
         char output_location[SIZE] = {0};
         strncpy(output_location, directory, strlen(directory));
         strcat(output_location, "/");
-        strcat(output_location, "/comp.out");
+        strcat(output_location, "/comp");
 
         // create the input to the execvp
         char *arguments[5] = {"gcc", "-o", output_location, c_file_path, NULL};
@@ -307,7 +306,7 @@ void save_student(student *student_info) {
         PRINT_ERROR_AND_EXIT;
     }
 
-    printf("%s\n", st_line);
+    printf("%s", st_line);
 }
 
 int main (int argc, char *argv[]) {
