@@ -26,7 +26,12 @@ typedef struct Student {
     char reason[SIZE];
 }student;
 
-void read_conf (char *file1, configuration *conf_info) {
+/**
+ * put the information in the file in a Configuration struct
+ * @param file - the configuration file
+ * @param conf_info - the empty configuration struct
+ */
+void read_conf (char *file, configuration *conf_info) {
     int fd, i, j, lines_num;
     char input_buffer [3 * SIZE];
     ssize_t read_input;
@@ -35,9 +40,9 @@ void read_conf (char *file1, configuration *conf_info) {
     lines_num = 1;
 
     // tests whether the file exist and whether the files can be accessed for reading
-    if (access(file1, F_OK) == 0 && access(file1, R_OK) == 0) {
+    if (access(file, F_OK) == 0 && access(file, R_OK) == 0) {
         // try to open file
-        if ((fd = open(file1, O_RDONLY)) == -1) {
+        if ((fd = open(file, O_RDONLY)) == -1) {
             PRINT_ERROR_AND_EXIT;
         }
     } else {
@@ -76,6 +81,12 @@ void read_conf (char *file1, configuration *conf_info) {
     }
 }
 
+/**
+ * compare the output of the student to the correct output
+ * @param conf_info - the configuration struct/information
+ * @param student_info - the student struct/information
+ * @param output_path - the path of the student's output
+ */
 void compare_output (configuration *conf_info, student *student_info,  char output_path[SIZE]) {
     pid_t pid = fork();
     if (pid == -1) {
@@ -84,14 +95,14 @@ void compare_output (configuration *conf_info, student *student_info,  char outp
         char cwd[SIZE] = {0};
 
         // get the current path
-        if (getcwd(cwd, sizeof(cwd)) != -1) {
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
             // create the path of the comp.out
             strcat(cwd, "/comp.out");
         } else {
             PRINT_ERROR_AND_EXIT;
         }
 
-        char *arguments[4] = {"comp", conf_info->output_file, output_path, NULL};
+        char *arguments[4] = {"comp.out", conf_info->output_file, output_path, NULL};
         execvp(cwd, arguments);
         PRINT_ERROR_AND_EXIT;
     } else {
@@ -124,6 +135,12 @@ void compare_output (configuration *conf_info, student *student_info,  char outp
     }
 }
 
+/**
+ * run the compiled c file of the student
+ * @param conf_info - the configuration struct/information
+ * @param student_info - the student struct/information
+ * @param directory - the students directory
+ */
 void run_file (configuration *conf_info, student *student_info, char directory[SIZE]) {
     char output_file[SIZE] = {0};
     // create a path for an output file
@@ -134,10 +151,10 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
     if (pid == -1) {
         PRINT_ERROR_AND_EXIT;
     } else if (pid == 0) {
-        // create the path of the comp.out
+        // create the path of the a.out
         char path[SIZE] = {0};
         strncpy(path, directory, strlen(directory));
-        strcat(path, "/comp");
+        strcat(path, "/a.out");
 
         // open input file
         // tests whether the file exist and whether the files can be accessed for reading
@@ -192,13 +209,24 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
         if (time == 5) {
             student_info->grade = 40;
             strncpy(student_info->reason, "TIMEOUT", strlen("TIMEOUT"));
+            // delete the output_file
+            unlink(output_file);
             // else, compare the output with the correct output
         } else {
             compare_output(conf_info, student_info, output_file);
+            // delete the output_file
+            unlink(output_file);
         }
     }
 }
 
+/**
+ * compile the student's c file and run
+ * @param dir_struct - the directory struct
+ * @param directory - the students directory
+ * @param conf_info - the configuration struct/information
+ * @param student_info - the student struct/information
+ */
 void compile_and_run_file (struct dirent* dir_struct, char directory[SIZE], configuration *conf_info, student *student_info) {
     pid_t pid = fork();
     if (pid == -1) {
@@ -214,7 +242,7 @@ void compile_and_run_file (struct dirent* dir_struct, char directory[SIZE], conf
         char output_location[SIZE] = {0};
         strncpy(output_location, directory, strlen(directory));
         strcat(output_location, "/");
-        strcat(output_location, "/comp");
+        strcat(output_location, "/a.out");
 
         // create the input to the execvp
         char *arguments[5] = {"gcc", "-o", output_location, c_file_path, NULL};
@@ -240,6 +268,13 @@ void compile_and_run_file (struct dirent* dir_struct, char directory[SIZE], conf
     }
 }
 
+/**
+ * goes over the student directory and search a c file
+ * @param conf_info - the configuration struct/information
+ * @param student_info - the student struct/information
+ * @param directory - the students directory
+ * @return 1 if the student's directory contains c file, else 0
+ */
 int in_directory (configuration *conf_info, student *student_info, char directory[SIZE]) {
     DIR* dir;
     char dir_buff[SIZE];
@@ -248,6 +283,7 @@ int in_directory (configuration *conf_info, student *student_info, char director
     memset(dir_buff,0,strlen(dir_buff));
     strncpy(dir_buff, directory, strlen(directory));
 
+    // open directory
     dir = opendir(directory);
     if (dir == NULL) {
         PRINT_ERROR_AND_EXIT;
@@ -280,11 +316,21 @@ int in_directory (configuration *conf_info, student *student_info, char director
         }
         dir_struct = readdir(dir);
     }
+
+    // close directory
+    if (closedir(dir) == -1) {
+        PRINT_ERROR_AND_EXIT;
+    }
     return c_file_exists;
 }
 
+/**
+ * write the student's information in the results.csv file
+ * @param student_info - the student struct/information
+ */
 void save_student(student *student_info) {
-    int output_file = open("results.csv", O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+    // open the file
+    int output_file = open("results.csv", O_RDWR | O_APPEND | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
     if (output_file == -1) {
         PRINT_ERROR_AND_EXIT;
     }
@@ -306,19 +352,24 @@ void save_student(student *student_info) {
         PRINT_ERROR_AND_EXIT;
     }
 
-    printf("%s", st_line);
+    // close the file
+    if (close(output_file) == -1) {
+        PRINT_ERROR_AND_EXIT;
+    }
 }
 
 int main (int argc, char *argv[]) {
     char *conf_path;
     configuration conf_info;
 
+    // check the number of the arguments
     if (argc != ARGS_NUM) {
         printf("unexpected number of arguments\n");
         return -1;
     }
 
     conf_path = argv[1];
+    // read the configuration file
     read_conf(conf_path, &conf_info);
 
     DIR* dir;
@@ -330,6 +381,7 @@ int main (int argc, char *argv[]) {
     }
 
     dir_struct = readdir(dir);
+    // goes over the students directory
     while (dir_struct != NULL) {
         if (!strcmp(dir_struct->d_name, ".") || !strcmp(dir_struct->d_name, "..")) {
             dir_struct = readdir(dir);
@@ -355,11 +407,15 @@ int main (int argc, char *argv[]) {
                 student_info.grade = 0;
                 strncpy(student_info.reason, "‫‪NO_C_FILE‬‬", strlen("‫‪NO_C_FILE‬‬"));
             }
-
+            // save student's information
             save_student(&student_info);
         }
-
         dir_struct = readdir(dir);
+    }
+
+    // close directory
+    if (closedir(dir) == -1) {
+        PRINT_ERROR_AND_EXIT;
     }
     return 0;
 }
