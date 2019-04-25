@@ -8,10 +8,9 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <string.h>
-
 #define SIZE 150
 #define ARGS_NUM 2
-#define PRINT_ERROR_AND_EXIT fprintf(stderr, "Error in system call\n"); exit(-1);
+#define PRINT_ERROR_AND_EXIT write(2, "Error in system call\n", strlen("Error in system call\n")); exit(-1);
 #define CLOSE_FILE close(fd);
 
 typedef struct Configuration {
