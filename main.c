@@ -48,6 +48,11 @@ void read_conf (char *file, configuration *conf_info) {
         PRINT_ERROR_AND_EXIT;
     }
 
+    // initialize the configuration info struct
+    memset(conf_info->directory,0,sizeof(conf_info->directory));
+    memset(conf_info->input_file,0,sizeof(conf_info->input_file));
+    memset(conf_info->output_file,0,sizeof(conf_info->output_file));
+
     // read all the configuration info
     read_input = read(fd, input_buffer, sizeof(input_buffer));
     if (read_input == -1) {
