@@ -233,6 +233,13 @@ void run_file (configuration *conf_info, student *student_info, char directory[S
  */
 void compile_and_run_file (struct dirent* dir_struct, char directory[SIZE], configuration *conf_info, student *student_info) {
     pid_t pid = fork();
+
+    // create the path of the output location
+    char output_location[SIZE] = {0};
+    strncpy(output_location, directory, strlen(directory));
+    strcat(output_location, "/");
+    strcat(output_location, "/a.out");
+
     if (pid == -1) {
         PRINT_ERROR_AND_EXIT;
     } else if (pid == 0) {
@@ -241,12 +248,6 @@ void compile_and_run_file (struct dirent* dir_struct, char directory[SIZE], conf
         strncpy(c_file_path, directory, strlen(directory));
         strcat(c_file_path, "/");
         strcat(c_file_path, dir_struct->d_name);
-
-        // create the path of the output location
-        char output_location[SIZE] = {0};
-        strncpy(output_location, directory, strlen(directory));
-        strcat(output_location, "/");
-        strcat(output_location, "/a.out");
 
         // create the input to the execvp
         char *arguments[5] = {"gcc", "-o", output_location, c_file_path, NULL};
@@ -268,6 +269,8 @@ void compile_and_run_file (struct dirent* dir_struct, char directory[SIZE], conf
             // else, run file
         } else {
             run_file(conf_info, student_info, directory);
+            // delete the compiled c file
+            unlink(output_location);
         }
     }
 }
